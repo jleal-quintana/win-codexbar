@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.1] — 2026-03-20
+
+### Added
+- **Light mode**: Added `System`, `Light`, and `Dark` appearance modes in Settings → Display with immediate egui theme updates across the main window and Preferences.
+
+### Changed
+- New installs now default to `System` appearance, while existing installs without a saved `theme_mode` stay on `Dark` to avoid surprise visual changes.
+- Theme colors are now resolved dynamically instead of assuming a dark-only palette, so cards, inputs, borders, and text stay readable in both light and dark UI.
+
+### Fixed
+- Preferences and main-window styling now stay in sync when the saved theme changes.
+- Fixed minor Windows build/lint blockers in auxiliary binaries/providers that surfaced during release verification.
+
+---
+
 ## [1.2.0] — 2026-03-18
 
 ### Added
@@ -116,6 +131,8 @@ Complete porting of Swift CodexBar features to Rust Windows version:
 
 ---
 
-[Unreleased]: https://github.com/Finesssee/Win-CodexBar/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/Finesssee/Win-CodexBar/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/Finesssee/Win-CodexBar/compare/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/Finesssee/Win-CodexBar/compare/v1.0.1...v1.2.0
 [1.0.1]: https://github.com/Finesssee/Win-CodexBar/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Finesssee/Win-CodexBar/releases/tag/v1.0.0

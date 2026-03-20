@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- Windows Setup installer packaging via local Docker/Wine + Inno Setup scripts for VPS-first releases.
+- Preferences controls for auto-downloading updates, install-on-quit, and running an immediate update check.
+
+### Changed
+- The in-app updater now prefers a verified `-Setup.exe` asset from GitHub Releases instead of treating any `.exe` as installable.
+- Update downloads now persist pending installer metadata so a verified update survives relaunch and can be applied on quit.
+- Release docs now describe the active Windows-local release flow instead of the old macOS/Sparkle process.
+
+### Fixed
+- Quit actions now funnel through one shared path, so install-on-quit, tray quit, and in-app quit use the same updater behavior.
+- Download verification now uses GitHub release asset digests first and falls back to `.sha256` sidecars only when needed.
+
+---
+
 ## [1.2.1] — 2026-03-20
 
 ### Added

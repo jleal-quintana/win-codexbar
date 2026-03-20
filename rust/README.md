@@ -32,6 +32,9 @@ A Windows port of [CodexBar](https://github.com/steipete/CodexBar) - a system tr
 
 Download the latest release from the [Releases](https://github.com/Finesssee/Win-CodexBar/releases) page.
 
+- Primary installable asset: `CodexBar-<version>-Setup.exe`
+- Optional manual asset: `codexbar.exe`
+
 ### Build from Source
 
 Requirements:
@@ -43,15 +46,23 @@ Requirements:
 git clone https://github.com/Finesssee/Win-CodexBar.git
 cd Win-CodexBar/rust
 
-# Build release version
-cargo build --release
+# Build release binaries
+cargo build --release --bins
 
 # Run the CLI
-./target/release/codexbar.exe --help
+./target/x86_64-pc-windows-gnu/release/codexbar.exe --help
 
 # Run the GUI (system tray)
-./target/release/codexbar.exe menubar
+./target/x86_64-pc-windows-gnu/release/codexbar.exe menubar
 ```
+
+### Build The Setup Installer Locally
+
+```bash
+./scripts/build-installer.sh
+```
+
+This writes `target/installer/CodexBar-<version>-Setup.exe`.
 
 ## Usage
 
@@ -172,6 +183,14 @@ A badge appears in the corner for status issues:
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```
+
+### Local Release
+
+```bash
+./scripts/release-local.sh <version>
+```
+
+This builds the Windows binaries locally, creates the Setup installer, and publishes the GitHub release with `gh`.
 
 ### Project Structure
 

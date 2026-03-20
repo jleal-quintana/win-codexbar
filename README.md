@@ -51,6 +51,9 @@ Other options:
 
 Download the latest release from [GitHub Releases](https://github.com/Finesssee/Win-CodexBar/releases).
 
+- Primary installable asset: `CodexBar-<version>-Setup.exe`
+- Optional portable asset: `codexbar.exe`
+
 ### Manual Build
 
 Prerequisites: Rust 1.70+ with `x86_64-pc-windows-gnu` target, MinGW-w64.
@@ -63,8 +66,8 @@ Install them automatically with:
 Then build:
 ```powershell
 cd rust
-cargo build --release
-# Binary at: target/release/codexbar.exe
+cargo build --release --bins
+# Binaries at: target/x86_64-pc-windows-gnu/release/
 ```
 
 ## Usage
@@ -145,7 +148,7 @@ If automatic extraction fails, you can add cookies manually:
 | System Tray | NSStatusItem | tray-icon crate |
 | Cookie Decryption | Keychain | DPAPI |
 | Widget | WidgetKit | Not available |
-| Auto-update | Sparkle | Manual |
+| Auto-update | Sparkle | GitHub Releases + local Setup installer |
 
 ## Privacy
 

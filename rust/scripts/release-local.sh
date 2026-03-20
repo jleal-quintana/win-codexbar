@@ -47,7 +47,7 @@ fi
 extract_release_notes() {
   awk -v version="$1" '
     $0 ~ "^## \\[" version "\\]" { capture = 1; next }
-    capture && /^## \\[/ { exit }
+    capture && /^## \[/ { exit }
     capture { print }
   ' "$2"
 }

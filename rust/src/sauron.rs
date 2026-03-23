@@ -225,12 +225,13 @@ fn default_config_candidates() -> Vec<PathBuf> {
 }
 
 fn common_install_path() -> Option<PathBuf> {
-    std::env::var_os("LOCALAPPDATA").map(PathBuf::from).map(|dir| {
-        dir.join("Programs")
-            .join("sauron-sees")
-            .join(SAURON_EXE)
-    })
-    .filter(|path| path.is_file())
+    let local_app = std::env::var_os("LOCALAPPDATA").map(PathBuf::from)?;
+    let candidates = [
+        local_app.join("SauronSees").join("bin").join(SAURON_EXE),
+        local_app.join("Programs").join("sauron-sees").join(SAURON_EXE),
+        local_app.join("sauron-sees").join(SAURON_EXE),
+    ];
+    candidates.into_iter().find(|p| p.is_file())
 }
 
 fn run_command<const N: usize>(

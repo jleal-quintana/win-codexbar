@@ -227,7 +227,7 @@ impl ProviderData {
             model_percent: None,
             model_name: None,
             plan: None,
-            error: Some(error),
+            error: Some(error.clone()),
             dashboard_url: None,
             pace_percent: None,
             pace_lasts_to_reset: false,

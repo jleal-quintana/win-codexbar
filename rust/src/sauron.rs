@@ -299,7 +299,7 @@ fn terminate_child(child: &mut Child) -> Result<()> {
         use windows::Win32::Foundation::HANDLE;
         use windows::Win32::System::Threading::TerminateProcess;
 
-        let handle = HANDLE(child.as_raw_handle() as isize);
+        let handle = HANDLE(child.as_raw_handle() as *mut std::ffi::c_void);
         unsafe {
             let _ = TerminateProcess(handle, 0);
         }

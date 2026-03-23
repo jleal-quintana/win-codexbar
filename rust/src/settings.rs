@@ -187,6 +187,18 @@ pub struct Settings {
     /// Enabled provider IDs (by CLI name)
     pub enabled_providers: HashSet<String>,
 
+    /// Whether the Sauron provider tab is enabled
+    #[serde(default)]
+    pub sauron_enabled: bool,
+
+    /// Optional override path for sauron-sees.exe
+    #[serde(default)]
+    pub sauron_exe_path: Option<String>,
+
+    /// Optional override path for the sauron-sees config file
+    #[serde(default)]
+    pub sauron_config_path: Option<String>,
+
     /// Theme mode: Dark, Light, or System (follow OS setting)
     #[serde(default)]
     pub theme_mode: ThemeMode,
@@ -288,6 +300,9 @@ impl Default for Settings {
 
         Self {
             enabled_providers: enabled,
+            sauron_enabled: false,
+            sauron_exe_path: None,
+            sauron_config_path: None,
             theme_mode: ThemeMode::default(),
             refresh_interval_secs: 300, // 5 minutes
             start_minimized: false,
@@ -351,6 +366,13 @@ impl Settings {
     fn settings_from_json(content: &str, existing_file: bool) -> Self {
         let mut settings = serde_json::from_str(content).unwrap_or_else(|_| Self::default());
 
+        if settings.sauron_enabled || settings.enabled_providers.contains("sauron") {
+            settings.sauron_enabled = true;
+            settings.enabled_providers.insert("sauron".to_string());
+        } else {
+            settings.enabled_providers.remove("sauron");
+        }
+
         if existing_file {
             let has_theme_mode = serde_json::from_str::<serde_json::Value>(content)
                 .map(|value| value.get("theme_mode").is_some())
@@ -374,7 +396,14 @@ impl Settings {
             std::fs::create_dir_all(parent)?;
         }
 
-        let json = serde_json::to_string_pretty(self)?;
+        let mut settings = self.clone();
+        if settings.sauron_enabled {
+            settings.enabled_providers.insert("sauron".to_string());
+        } else {
+            settings.enabled_providers.remove("sauron");
+        }
+
+        let json = serde_json::to_string_pretty(&settings)?;
         std::fs::write(&path, json)?;
 
         Ok(())
@@ -432,21 +461,40 @@ impl Settings {
 
     /// Check if a provider is enabled
     pub fn is_provider_enabled(&self, id: ProviderId) -> bool {
+        if id == ProviderId::Sauron {
+            return self.sauron_enabled;
+        }
         self.enabled_providers.contains(id.cli_name())
     }
 
     /// Enable a provider
     pub fn enable_provider(&mut self, id: ProviderId) {
+        if id == ProviderId::Sauron {
+            self.sauron_enabled = true;
+        }
         self.enabled_providers.insert(id.cli_name().to_string());
     }
 
     /// Disable a provider
     pub fn disable_provider(&mut self, id: ProviderId) {
+        if id == ProviderId::Sauron {
+            self.sauron_enabled = false;
+        }
         self.enabled_providers.remove(id.cli_name());
     }
 
     /// Toggle a provider's enabled state
     pub fn toggle_provider(&mut self, id: ProviderId) -> bool {
+        if id == ProviderId::Sauron {
+            self.sauron_enabled = !self.sauron_enabled;
+            if self.sauron_enabled {
+                self.enabled_providers.insert(id.cli_name().to_string());
+            } else {
+                self.enabled_providers.remove(id.cli_name());
+            }
+            return self.sauron_enabled;
+        }
+
         let name = id.cli_name().to_string();
         if self.enabled_providers.contains(&name) {
             self.enabled_providers.remove(&name);

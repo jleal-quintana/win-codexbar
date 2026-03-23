@@ -660,8 +660,7 @@ impl PreferencesWindow {
                         for provider_id in providers {
                             let provider_name = provider_id.cli_name();
                             let is_selected = self.selected_provider.as_ref() == Some(provider_id);
-                            let is_enabled =
-                                self.settings.enabled_providers.contains(provider_name);
+                            let is_enabled = self.settings.is_provider_enabled(*provider_id);
 
                             // Add padding around each row
                             let frame_response = egui::Frame::none()
@@ -717,13 +716,9 @@ impl PreferencesWindow {
                                                 let mut enabled = is_enabled;
                                                 if ui.checkbox(&mut enabled, "").changed() {
                                                     if enabled {
-                                                        self.settings
-                                                            .enabled_providers
-                                                            .insert(provider_name.to_string());
+                                                        self.settings.enable_provider(*provider_id);
                                                     } else {
-                                                        self.settings
-                                                            .enabled_providers
-                                                            .remove(provider_name);
+                                                        self.settings.disable_provider(*provider_id);
                                                     }
                                                     self.settings_changed = true;
                                                 }
@@ -799,7 +794,7 @@ impl PreferencesWindow {
     fn draw_provider_detail_panel(&mut self, ui: &mut egui::Ui, provider_id: &ProviderId) {
         let provider_name = provider_id.cli_name();
         let display_name = provider_id.display_name();
-        let is_enabled = self.settings.enabled_providers.contains(provider_name);
+        let is_enabled = self.settings.is_provider_enabled(*provider_id);
         let color = provider_color(provider_name);
 
         // ═══════════════════════════════════════════════════════════
@@ -858,11 +853,9 @@ impl PreferencesWindow {
                 let mut enabled = is_enabled;
                 if ui.checkbox(&mut enabled, "").changed() {
                     if enabled {
-                        self.settings
-                            .enabled_providers
-                            .insert(provider_name.to_string());
+                        self.settings.enable_provider(*provider_id);
                     } else {
-                        self.settings.enabled_providers.remove(provider_name);
+                        self.settings.disable_provider(*provider_id);
                     }
                     self.settings_changed = true;
                 }
@@ -879,6 +872,7 @@ impl PreferencesWindow {
         settings_card(ui, |ui| {
             // Authentication type
             let auth_type = match provider_name {
+                "sauron" => "Local Agent",
                 "openai" | "gemini" | "openrouter" => "API Key",
                 "claude" | "cursor" | "kimi" => "Browser Session",
                 "ollama" => "Local (No Auth)",
@@ -890,6 +884,7 @@ impl PreferencesWindow {
 
             // Data source
             let data_source = match provider_name {
+                "sauron" => "sauron-sees subprocess",
                 "openai" => "OpenAI API Usage Dashboard",
                 "gemini" => "Google AI Studio",
                 "claude" => "Anthropic Web Console",
@@ -905,6 +900,7 @@ impl PreferencesWindow {
 
             // Rate limit info
             let rate_info = match provider_name {
+                "sauron" => "Agent state, pause window, screenshots",
                 "claude" => "Daily message limit",
                 "cursor" => "Monthly request limit",
                 "openai" => "Token usage & credits",
@@ -924,16 +920,27 @@ impl PreferencesWindow {
         settings_card(ui, |ui| {
             if is_enabled {
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("📊").size(FontSize::LG));
+                    ui.label(
+                        RichText::new(if *provider_id == ProviderId::Sauron { "👁" } else { "📊" })
+                            .size(FontSize::LG),
+                    );
                     ui.add_space(Spacing::SM);
                     ui.vertical(|ui| {
                         ui.label(
-                            RichText::new("Live usage data in main window")
+                            RichText::new(if *provider_id == ProviderId::Sauron {
+                                "Sauron controls live in the main window"
+                            } else {
+                                "Live usage data in main window"
+                            })
                                 .size(FontSize::MD)
                                 .color(Theme::text_primary()),
                         );
                         ui.label(
-                            RichText::new("Click the tray icon to view real-time metrics")
+                            RichText::new(if *provider_id == ProviderId::Sauron {
+                                "Start, stop, pause, and open screenshots from the Sauron tab"
+                            } else {
+                                "Click the tray icon to view real-time metrics"
+                            })
                                 .size(FontSize::SM)
                                 .color(Theme::text_muted()),
                         );
@@ -973,6 +980,11 @@ impl PreferencesWindow {
             ui.add_space(Spacing::LG);
         }
 
+        if *provider_id == ProviderId::Sauron {
+            self.draw_sauron_provider_settings(ui);
+            ui.add_space(Spacing::LG);
+        }
+
         // ═══════════════════════════════════════════════════════════
         // QUICK ACTIONS
         // ═══════════════════════════════════════════════════════════
@@ -1008,6 +1020,11 @@ impl PreferencesWindow {
                             .color(Theme::text_muted()),
                     );
                 }
+                "sauron" => {
+                    if text_button(ui, "→ Open Sauron-sees on GitHub", Theme::ACCENT_PRIMARY) {
+                        let _ = open::that("https://github.com/jleal-quintana/sauron-sees");
+                    }
+                }
                 _ => {
                     ui.label(
                         RichText::new("No quick actions available")
@@ -1016,6 +1033,74 @@ impl PreferencesWindow {
                     );
                 }
             }
+        });
+    }
+
+    fn draw_sauron_provider_settings(&mut self, ui: &mut egui::Ui) {
+        section_header(ui, "Sauron Integration");
+
+        settings_card(ui, |ui| {
+            let mut enabled = self.settings.sauron_enabled;
+            if setting_toggle(
+                ui,
+                "Show Sauron tab",
+                "Display the Sauron hub in the main window",
+                &mut enabled,
+            ) {
+                if enabled {
+                    self.settings.enable_provider(ProviderId::Sauron);
+                } else {
+                    self.settings.disable_provider(ProviderId::Sauron);
+                }
+                self.settings_changed = true;
+            }
+
+            setting_divider(ui);
+
+            ui.label(
+                RichText::new("Executable override")
+                    .size(FontSize::SM)
+                    .color(Theme::text_secondary()),
+            );
+            let mut exe_path = self.settings.sauron_exe_path.clone().unwrap_or_default();
+            if ui
+                .add(
+                    egui::TextEdit::singleline(&mut exe_path)
+                        .desired_width(ui.available_width())
+                        .hint_text("%LOCALAPPDATA%\\Programs\\sauron-sees\\sauron-sees.exe"),
+                )
+                .changed()
+            {
+                self.settings.sauron_exe_path = trim_optional_text(exe_path);
+                self.settings_changed = true;
+            }
+
+            ui.add_space(Spacing::SM);
+
+            ui.label(
+                RichText::new("Config override")
+                    .size(FontSize::SM)
+                    .color(Theme::text_secondary()),
+            );
+            let mut config_path = self.settings.sauron_config_path.clone().unwrap_or_default();
+            if ui
+                .add(
+                    egui::TextEdit::singleline(&mut config_path)
+                        .desired_width(ui.available_width())
+                        .hint_text("%APPDATA%\\sauron-sees\\config.toml"),
+                )
+                .changed()
+            {
+                self.settings.sauron_config_path = trim_optional_text(config_path);
+                self.settings_changed = true;
+            }
+
+            ui.add_space(Spacing::SM);
+            ui.label(
+                RichText::new("Leave blank to use PATH and default config discovery.")
+                    .size(FontSize::XS)
+                    .color(Theme::text_muted()),
+            );
         });
     }
 
@@ -1337,7 +1422,7 @@ impl PreferencesWindow {
         for provider_info in &api_key_providers {
             let provider_id = provider_info.id.cli_name();
             let has_key = self.api_keys.has_key(provider_id);
-            let is_enabled = self.settings.enabled_providers.contains(provider_id);
+            let is_enabled = self.settings.is_provider_enabled(provider_info.id);
             let icon = provider_icon(provider_id);
             let color = provider_color(provider_id);
 
@@ -2305,10 +2390,7 @@ fn render_providers_tab_macos(
                             for provider_id in providers {
                                 let is_selected = *provider_id == selected;
                                 let is_enabled = if let Ok(state) = shared_state.lock() {
-                                    state
-                                        .settings
-                                        .enabled_providers
-                                        .contains(provider_id.cli_name())
+                                    state.settings.is_provider_enabled(*provider_id)
                                 } else {
                                     true
                                 };
@@ -2518,10 +2600,7 @@ fn render_provider_detail_panel(
     let brand_color = provider_color(provider_id.cli_name());
 
     let is_enabled = if let Ok(state) = shared_state.lock() {
-        state
-            .settings
-            .enabled_providers
-            .contains(provider_id.cli_name())
+        state.settings.is_provider_enabled(provider_id)
     } else {
         true
     };
@@ -2613,11 +2692,10 @@ fn render_provider_detail_panel(
                 &mut enabled,
             ) {
                 if let Ok(mut state) = shared_state.lock() {
-                    let name = provider_id.cli_name().to_string();
                     if enabled {
-                        state.settings.enabled_providers.insert(name);
+                        state.settings.enable_provider(provider_id);
                     } else {
-                        state.settings.enabled_providers.remove(&name);
+                        state.settings.disable_provider(provider_id);
                     }
                     state.settings_changed = true;
                 }
@@ -2683,16 +2761,31 @@ fn render_provider_detail_panel(
         account_display
     };
     let plan_display = login_method.as_deref().unwrap_or("Unknown");
+    let source_display = if provider_id == ProviderId::Sauron {
+        "cli subprocess"
+    } else {
+        "oauth + web"
+    };
+    let version_display = if provider_id == ProviderId::Sauron {
+        "sauron-sees"
+    } else {
+        provider_id.cli_name()
+    };
+    let status_display = if provider_id == ProviderId::Sauron {
+        plan_display
+    } else {
+        "All Systems Operational"
+    };
 
     egui::Grid::new("provider_info_grid")
         .num_columns(2)
         .spacing([16.0, 8.0])
         .show(ui, |ui| {
             info_row(ui, "State", if is_enabled { "Enabled" } else { "Disabled" });
-            info_row(ui, "Source", "oauth + web");
-            info_row(ui, "Version", provider_id.cli_name());
+            info_row(ui, "Source", source_display);
+            info_row(ui, "Version", version_display);
             info_row(ui, "Updated", &updated_display);
-            info_row(ui, "Status", "All Systems Operational");
+            info_row(ui, "Status", status_display);
             info_row(ui, "Account", &account_display);
             info_row(ui, "Plan", plan_display);
         });
@@ -2990,6 +3083,11 @@ fn render_provider_detail_panel(
             .color(Theme::text_muted()),
     );
 
+    if provider_id == ProviderId::Sauron {
+        ui.add_space(Spacing::XL);
+        render_sauron_provider_settings(ui, shared_state);
+    }
+
     // ═══════════════════════════════════════════════════════════
     // ACCOUNTS SECTION - Token account switching (only for supported providers)
     // ═══════════════════════════════════════════════════════════
@@ -3012,6 +3110,107 @@ fn info_row(ui: &mut egui::Ui, label: &str, value: &str) {
             .color(Theme::text_primary()),
     );
     ui.end_row();
+}
+
+fn render_sauron_provider_settings(
+    ui: &mut egui::Ui,
+    shared_state: &Arc<Mutex<PreferencesSharedState>>,
+) {
+    ui.label(
+        RichText::new("Sauron Integration")
+            .size(FontSize::MD)
+            .color(Theme::text_primary())
+            .strong(),
+    );
+    ui.add_space(Spacing::SM);
+
+    let (
+        mut enabled,
+        mut exe_path,
+        mut config_path,
+    ) = if let Ok(state) = shared_state.lock() {
+        (
+            state.settings.sauron_enabled,
+            state.settings.sauron_exe_path.clone().unwrap_or_default(),
+            state.settings.sauron_config_path.clone().unwrap_or_default(),
+        )
+    } else {
+        (false, String::new(), String::new())
+    };
+
+    if setting_toggle(
+        ui,
+        "Show Sauron tab",
+        "Display the Sauron control surface in the main window",
+        &mut enabled,
+    ) {
+        if let Ok(mut state) = shared_state.lock() {
+            if enabled {
+                state.settings.enable_provider(ProviderId::Sauron);
+            } else {
+                state.settings.disable_provider(ProviderId::Sauron);
+            }
+            state.settings_changed = true;
+        }
+    }
+
+    ui.add_space(Spacing::MD);
+
+    ui.label(
+        RichText::new("Executable override")
+            .size(FontSize::SM)
+            .color(Theme::text_secondary()),
+    );
+    if ui
+        .add(
+            egui::TextEdit::singleline(&mut exe_path)
+                .desired_width(ui.available_width())
+                .hint_text("%LOCALAPPDATA%\\Programs\\sauron-sees\\sauron-sees.exe"),
+        )
+        .changed()
+    {
+        if let Ok(mut state) = shared_state.lock() {
+            state.settings.sauron_exe_path = trim_optional_text(exe_path);
+            state.settings_changed = true;
+        }
+    }
+
+    ui.add_space(Spacing::SM);
+
+    ui.label(
+        RichText::new("Config override")
+            .size(FontSize::SM)
+            .color(Theme::text_secondary()),
+    );
+    if ui
+        .add(
+            egui::TextEdit::singleline(&mut config_path)
+                .desired_width(ui.available_width())
+                .hint_text("%APPDATA%\\sauron-sees\\config.toml"),
+        )
+        .changed()
+    {
+        if let Ok(mut state) = shared_state.lock() {
+            state.settings.sauron_config_path = trim_optional_text(config_path);
+            state.settings_changed = true;
+        }
+    }
+
+    ui.add_space(Spacing::SM);
+    ui.label(
+        RichText::new("Leave both blank to use PATH lookup and default config discovery.")
+            .size(FontSize::XS)
+            .color(Theme::text_muted()),
+    );
+}
+
+fn trim_optional_text(value: String) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 /// Helper: Usage bar row with label, percentage, info text
@@ -4027,7 +4226,7 @@ fn render_api_keys_tab(ui: &mut egui::Ui, shared_state: &Arc<Mutex<PreferencesSh
     for provider_info in &api_key_providers {
         let provider_id = provider_info.id.cli_name();
         let has_key = api_keys_data.has_key(provider_id);
-        let is_enabled = settings_data.enabled_providers.contains(provider_id);
+        let is_enabled = settings_data.is_provider_enabled(provider_info.id);
         let icon = provider_icon(provider_id);
         let color = provider_color(provider_id);
 
@@ -4749,11 +4948,10 @@ fn render_providers_tab(
                         &mut enabled,
                     ) {
                         if let Ok(mut state) = shared_state.lock() {
-                            let name = provider_id.cli_name().to_string();
                             if enabled {
-                                state.settings.enabled_providers.insert(name);
+                                state.settings.enable_provider(*provider_id);
                             } else {
-                                state.settings.enabled_providers.remove(&name);
+                                state.settings.disable_provider(*provider_id);
                             }
                             state.settings_changed = true;
                         }

@@ -420,6 +420,7 @@ pub fn provider_icon(name: &str) -> &'static str {
         "codex" => "◆",
         "claude" => "◈",
         "cursor" => "▸",
+        "sauron" => "◉",
         "gemini" => "✦",
         "copilot" => "⬡",
         "antigravity" => "◉",
@@ -445,6 +446,7 @@ pub fn provider_color(name: &str) -> Color32 {
     match name.to_lowercase().as_str() {
         "claude" => Color32::from_rgb(204, 124, 94), // #CC7C5E - Warm terracotta
         "codex" => Color32::from_rgb(73, 163, 176),  // #49A3B0 - Teal
+        "sauron" => Color32::from_rgb(176, 25, 44),  // #B0192C - Crimson
         "gemini" => Color32::from_rgb(171, 135, 234), // #AB87EA - Purple
         "cursor" => Color32::from_rgb(0, 191, 165),  // #00BFA5 - Teal green
         "copilot" => Color32::from_rgb(168, 85, 247), // #A855F7 - Vibrant purple

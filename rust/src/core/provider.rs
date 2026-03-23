@@ -15,6 +15,7 @@ pub enum ProviderId {
     Codex,
     Claude,
     Cursor,
+    Sauron,
     Factory,
     Gemini,
     Antigravity,
@@ -43,6 +44,7 @@ impl ProviderId {
             ProviderId::Codex,
             ProviderId::Claude,
             ProviderId::Cursor,
+            ProviderId::Sauron,
             ProviderId::Factory,
             ProviderId::Gemini,
             ProviderId::Antigravity,
@@ -71,6 +73,7 @@ impl ProviderId {
             ProviderId::Codex => "codex",
             ProviderId::Claude => "claude",
             ProviderId::Cursor => "cursor",
+            ProviderId::Sauron => "sauron",
             ProviderId::Factory => "factory",
             ProviderId::Gemini => "gemini",
             ProviderId::Antigravity => "antigravity",
@@ -99,6 +102,7 @@ impl ProviderId {
             ProviderId::Codex => "Codex",
             ProviderId::Claude => "Claude",
             ProviderId::Cursor => "Cursor",
+            ProviderId::Sauron => "Sauron",
             ProviderId::Factory => "Factory",
             ProviderId::Gemini => "Gemini",
             ProviderId::Antigravity => "Antigravity",
@@ -143,6 +147,7 @@ impl ProviderId {
             ProviderId::Ollama => Some("ollama.com"),
             // Token-based providers (don't use cookies)
             ProviderId::Copilot => None,
+            ProviderId::Sauron => None,
             ProviderId::Zai => None,
             ProviderId::VertexAI => None,
             ProviderId::JetBrains => None,
@@ -158,6 +163,7 @@ impl ProviderId {
             "codex" | "openai" => Some(ProviderId::Codex),
             "claude" | "anthropic" => Some(ProviderId::Claude),
             "cursor" => Some(ProviderId::Cursor),
+            "sauron" | "sauron-sees" => Some(ProviderId::Sauron),
             "factory" | "droid" => Some(ProviderId::Factory),
             "gemini" | "google" => Some(ProviderId::Gemini),
             "antigravity" => Some(ProviderId::Antigravity),
@@ -387,6 +393,7 @@ pub fn cli_name_map() -> HashMap<&'static str, ProviderId> {
     // Add aliases
     map.insert("openai", ProviderId::Codex);
     map.insert("anthropic", ProviderId::Claude);
+    map.insert("sauron-sees", ProviderId::Sauron);
     map.insert("windsurf", ProviderId::Factory);
     map.insert("codeium", ProviderId::Factory);
     map.insert("google", ProviderId::Gemini);
@@ -408,9 +415,10 @@ mod tests {
     #[test]
     fn test_provider_id_all() {
         let all = ProviderId::all();
-        assert_eq!(all.len(), 22); // 21 + Kilo
+        assert_eq!(all.len(), 23);
         assert!(all.contains(&ProviderId::Claude));
         assert!(all.contains(&ProviderId::Codex));
+        assert!(all.contains(&ProviderId::Sauron));
         assert!(all.contains(&ProviderId::Kimi));
         assert!(all.contains(&ProviderId::KimiK2));
         assert!(all.contains(&ProviderId::Amp));
@@ -422,6 +430,7 @@ mod tests {
     fn test_provider_id_cli_name() {
         assert_eq!(ProviderId::Claude.cli_name(), "claude");
         assert_eq!(ProviderId::Codex.cli_name(), "codex");
+        assert_eq!(ProviderId::Sauron.cli_name(), "sauron");
         assert_eq!(ProviderId::Factory.cli_name(), "factory");
         assert_eq!(ProviderId::Zai.cli_name(), "zai");
     }
@@ -429,6 +438,7 @@ mod tests {
     #[test]
     fn test_provider_id_display_name() {
         assert_eq!(ProviderId::Claude.display_name(), "Claude");
+        assert_eq!(ProviderId::Sauron.display_name(), "Sauron");
         assert_eq!(ProviderId::Factory.display_name(), "Factory");
         assert_eq!(ProviderId::Zai.display_name(), "z.ai");
     }
@@ -440,6 +450,7 @@ mod tests {
         assert_eq!(ProviderId::from_cli_name("CLAUDE"), Some(ProviderId::Claude));
         assert_eq!(ProviderId::from_cli_name("codex"), Some(ProviderId::Codex));
         assert_eq!(ProviderId::from_cli_name("openai"), Some(ProviderId::Codex));
+        assert_eq!(ProviderId::from_cli_name("sauron-sees"), Some(ProviderId::Sauron));
         assert_eq!(ProviderId::from_cli_name("factory"), Some(ProviderId::Factory));
         assert_eq!(ProviderId::from_cli_name("zed"), Some(ProviderId::Zai));
         assert_eq!(ProviderId::from_cli_name("unknown"), None);
@@ -495,6 +506,7 @@ mod tests {
 
         // Token-based providers (no cookies)
         assert_eq!(ProviderId::Copilot.cookie_domain(), None);
+        assert_eq!(ProviderId::Sauron.cookie_domain(), None);
         assert_eq!(ProviderId::Zai.cookie_domain(), None);
         assert_eq!(ProviderId::VertexAI.cookie_domain(), None);
         assert_eq!(ProviderId::JetBrains.cookie_domain(), None);

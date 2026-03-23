@@ -18,6 +18,7 @@ mod login;
 mod native_ui;
 mod notifications;
 mod providers;
+mod sauron;
 mod settings;
 mod shortcuts;
 mod single_instance;

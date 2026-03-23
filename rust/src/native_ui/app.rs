@@ -24,6 +24,7 @@ use crate::core::{TokenAccountStore, TokenAccountSupport};
 use crate::cost_scanner::get_daily_cost_history;
 use crate::login::LoginPhase;
 use crate::providers::*;
+use crate::sauron::{SauronAgentState, SauronManager};
 use crate::settings::{ApiKeys, ManualCookies, Settings, UpdateChannel};
 use crate::shortcuts::{parse_shortcut, ShortcutManager};
 use crate::status::{fetch_provider_status, get_status_page_url, StatusLevel};
@@ -97,6 +98,8 @@ pub struct ProviderData {
     pub cost_history: Vec<(String, f64)>,
     pub credits_history: Vec<(String, f64)>,
     pub usage_breakdown: Vec<UsageBreakdownPoint>,
+    pub sauron_state: Option<SauronAgentState>,
+    pub sauron_detail: Option<String>,
 }
 
 impl ProviderData {
@@ -124,6 +127,8 @@ impl ProviderData {
             cost_history: Vec::new(),
             credits_history: Vec::new(),
             usage_breakdown: Vec::new(),
+            sauron_state: None,
+            sauron_detail: None,
         }
     }
 
@@ -162,7 +167,11 @@ impl ProviderData {
             session_reset: snapshot
                 .primary
                 .resets_at
-                .map(|t| format_reset_time(t, reset_time_relative)),
+                .map(|t| format_reset_time(t, reset_time_relative))
+                .or_else(|| {
+                    (id == ProviderId::Sauron).then(|| snapshot.primary.reset_description.clone())
+                })
+                .flatten(),
             weekly_percent: snapshot.secondary.as_ref().map(|s| s.used_percent),
             weekly_reset: snapshot.secondary.as_ref().and_then(|s| {
                 s.resets_at
@@ -186,6 +195,23 @@ impl ProviderData {
             cost_history: Vec::new(),
             credits_history: Vec::new(),
             usage_breakdown: Vec::new(),
+            sauron_state: (id == ProviderId::Sauron)
+                .then(|| {
+                    snapshot
+                        .login_method
+                        .as_deref()
+                        .map(SauronAgentState::from_status_text)
+                        .unwrap_or(SauronAgentState::Stopped)
+                }),
+            sauron_detail: (id == ProviderId::Sauron)
+                .then(|| {
+                    snapshot
+                        .primary
+                        .reset_description
+                        .clone()
+                        .or_else(|| snapshot.login_method.clone())
+                })
+                .flatten(),
         }
     }
 
@@ -213,6 +239,14 @@ impl ProviderData {
             cost_history: Vec::new(),
             credits_history: Vec::new(),
             usage_breakdown: Vec::new(),
+            sauron_state: (id == ProviderId::Sauron).then(|| {
+                if error.to_ascii_lowercase().contains("not installed") {
+                    SauronAgentState::NotInstalled
+                } else {
+                    SauronAgentState::Stopped
+                }
+            }),
+            sauron_detail: (id == ProviderId::Sauron).then_some(error.clone()),
         }
     }
 
@@ -521,6 +555,7 @@ fn spawn_update_check(
 pub struct CodexBarApp {
     state: Arc<Mutex<SharedState>>,
     settings: Settings,
+    sauron_manager: Arc<Mutex<SauronManager>>,
     tray_manager: Option<UnifiedTrayManager>,
     tray_action_rx: Option<Receiver<TrayMenuAction>>,
     preferences_window: PreferencesWindow,
@@ -667,6 +702,7 @@ impl CodexBarApp {
         Self {
             state,
             settings,
+            sauron_manager: Arc::new(Mutex::new(SauronManager::new())),
             tray_manager,
             tray_action_rx,
             preferences_window: PreferencesWindow::new(),
@@ -681,6 +717,10 @@ impl CodexBarApp {
     }
 
     fn request_quit(&self) {
+        if let Ok(mut manager) = self.sauron_manager.lock() {
+            let _ = manager.stop();
+        }
+
         if self.settings.install_updates_on_quit {
             if let Some(pending) = updater::get_pending_update() {
                 if let Err(e) = updater::apply_update(&pending.file_path) {
@@ -1001,6 +1041,7 @@ fn create_provider(id: ProviderId) -> Box<dyn Provider> {
         ProviderId::Claude => Box::new(ClaudeProvider::new()),
         ProviderId::Codex => Box::new(CodexProvider::new()),
         ProviderId::Cursor => Box::new(CursorProvider::new()),
+        ProviderId::Sauron => Box::new(SauronProvider::new()),
         ProviderId::Gemini => Box::new(GeminiProvider::new()),
         ProviderId::Copilot => Box::new(CopilotProvider::new()),
         ProviderId::Antigravity => Box::new(AntigravityProvider::new()),
@@ -1774,27 +1815,45 @@ impl eframe::App for CodexBarApp {
                                     }
                                 }
                             } else if let Some((_, selected_provider)) = visible_providers.iter().find(|(idx, _)| *idx == selected_idx) {
-                                let (refresh, switch) = draw_provider_detail_card(
-                                    ui,
-                                    selected_provider,
-                                    &mut self.icon_cache,
-                                    show_credits,
-                                    show_as_used,
-                                    hide_personal_info,
-                                );
-                                manual_refresh_requested = refresh;
-                                account_switch_provider = switch;
+                                if selected_provider.name == ProviderId::Sauron.cli_name() {
+                                    manual_refresh_requested = draw_sauron_detail_card(
+                                        ui,
+                                        selected_provider,
+                                        &self.sauron_manager,
+                                        &self.settings,
+                                    );
+                                } else {
+                                    let (refresh, switch) = draw_provider_detail_card(
+                                        ui,
+                                        selected_provider,
+                                        &mut self.icon_cache,
+                                        show_credits,
+                                        show_as_used,
+                                        hide_personal_info,
+                                    );
+                                    manual_refresh_requested = refresh;
+                                    account_switch_provider = switch;
+                                }
                             } else if let Some((_, first_provider)) = visible_providers.first() {
-                                let (refresh, switch) = draw_provider_detail_card(
-                                    ui,
-                                    first_provider,
-                                    &mut self.icon_cache,
-                                    show_credits,
-                                    show_as_used,
-                                    hide_personal_info,
-                                );
-                                manual_refresh_requested = refresh;
-                                account_switch_provider = switch;
+                                if first_provider.name == ProviderId::Sauron.cli_name() {
+                                    manual_refresh_requested = draw_sauron_detail_card(
+                                        ui,
+                                        first_provider,
+                                        &self.sauron_manager,
+                                        &self.settings,
+                                    );
+                                } else {
+                                    let (refresh, switch) = draw_provider_detail_card(
+                                        ui,
+                                        first_provider,
+                                        &mut self.icon_cache,
+                                        show_credits,
+                                        show_as_used,
+                                        hide_personal_info,
+                                    );
+                                    manual_refresh_requested = refresh;
+                                    account_switch_provider = switch;
+                                }
                             }
 
                             // Trigger manual refresh if requested
@@ -1941,6 +2000,14 @@ impl eframe::App for CodexBarApp {
     }
 }
 
+impl Drop for CodexBarApp {
+    fn drop(&mut self) {
+        if let Ok(mut manager) = self.sauron_manager.lock() {
+            let _ = manager.stop();
+        }
+    }
+}
+
 /// Compact row for the Overview tab: icon, name, and usage bar
 fn draw_overview_provider_row(
     ui: &mut egui::Ui,
@@ -2030,6 +2097,232 @@ fn draw_overview_provider_row(
                 });
             });
         });
+}
+
+fn draw_sauron_detail_card(
+    ui: &mut egui::Ui,
+    provider: &ProviderData,
+    sauron_manager: &Arc<Mutex<SauronManager>>,
+    settings: &Settings,
+) -> bool {
+    let brand_color = provider_color(&provider.name);
+    let panel_fill = Color32::from_rgb(34, 9, 13);
+    let panel_border = Color32::from_rgb(104, 18, 29);
+    let state = provider.sauron_state.unwrap_or_else(|| {
+        if provider
+            .error
+            .as_deref()
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+            .contains("not installed")
+        {
+            SauronAgentState::NotInstalled
+        } else {
+            SauronAgentState::Stopped
+        }
+    });
+    let detail = provider
+        .sauron_detail
+        .as_deref()
+        .or(provider.error.as_deref())
+        .unwrap_or("Control the sauron-sees agent from CodexBar.");
+
+    let child_running = sauron_manager
+        .lock()
+        .map(|mut manager| manager.is_child_running())
+        .unwrap_or(false);
+    let is_running = child_running || matches!(state, SauronAgentState::Watching | SauronAgentState::Paused);
+    let is_installed = state != SauronAgentState::NotInstalled;
+
+    let mut refresh_requested = false;
+
+    egui::Frame::none()
+        .fill(panel_fill)
+        .rounding(Rounding::same(Radius::LG))
+        .stroke(Stroke::new(1.0, panel_border))
+        .inner_margin(egui::Margin::same(16.0))
+        .show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new("◉")
+                            .size(24.0)
+                            .color(brand_color),
+                    );
+                    ui.add_space(8.0);
+                    ui.vertical(|ui| {
+                        ui.label(
+                            RichText::new("Sauron")
+                                .size(FontSize::BASE)
+                                .color(Color32::WHITE)
+                                .strong(),
+                        );
+                        ui.label(
+                            RichText::new("sauron-sees hub")
+                                .size(FontSize::XS)
+                                .color(Color32::from_rgb(214, 179, 184)),
+                        );
+                    });
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        egui::Frame::none()
+                            .fill(brand_color.gamma_multiply(0.3))
+                            .rounding(Rounding::same(Radius::SM))
+                            .inner_margin(egui::Margin::symmetric(10.0, 6.0))
+                            .show(ui, |ui| {
+                                ui.label(
+                                    RichText::new(state.status_label())
+                                        .size(FontSize::XS)
+                                        .color(Color32::WHITE)
+                                        .strong(),
+                                );
+                            });
+                    });
+                });
+
+                ui.add_space(Spacing::SM);
+                ui.label(
+                    RichText::new(detail)
+                        .size(FontSize::SM)
+                        .color(Color32::from_rgb(232, 213, 216)),
+                );
+
+                ui.add_space(Spacing::MD);
+                let button_height = 34.0;
+                let button_rounding = Rounding::same(Radius::SM);
+
+                ui.columns(2, |columns| {
+                    let toggle_label = if is_running { "Stop" } else { "Start" };
+                    let toggle_fill = if is_running {
+                        Color32::from_rgb(112, 20, 32)
+                    } else {
+                        brand_color
+                    };
+
+                    if columns[0]
+                        .add_enabled(
+                            is_installed,
+                            egui::Button::new(
+                                RichText::new(toggle_label)
+                                    .size(FontSize::SM)
+                                    .color(Color32::WHITE)
+                                    .strong(),
+                            )
+                            .fill(toggle_fill)
+                            .rounding(button_rounding)
+                            .min_size(Vec2::new(columns[0].available_width(), button_height)),
+                        )
+                        .clicked()
+                    {
+                        if let Ok(mut manager) = sauron_manager.lock() {
+                            let result = if is_running {
+                                manager.stop()
+                            } else {
+                                manager.start(settings)
+                            };
+                            if let Err(error) = result {
+                                tracing::error!("Sauron toggle failed: {}", error);
+                            }
+                        }
+                        refresh_requested = true;
+                    }
+
+                    if columns[1]
+                        .add_enabled(
+                            is_installed && is_running,
+                            egui::Button::new(
+                                RichText::new("Pause 1h")
+                                    .size(FontSize::SM)
+                                    .color(Color32::WHITE),
+                            )
+                            .fill(Color32::from_rgb(81, 18, 24))
+                            .rounding(button_rounding)
+                            .min_size(Vec2::new(columns[1].available_width(), button_height)),
+                        )
+                        .clicked()
+                    {
+                        if let Ok(manager) = sauron_manager.lock() {
+                            if let Err(error) = manager.pause_for_one_hour(settings) {
+                                tracing::error!("Sauron pause failed: {}", error);
+                            }
+                        }
+                        refresh_requested = true;
+                    }
+                });
+
+                ui.add_space(Spacing::SM);
+
+                ui.columns(2, |columns| {
+                    if columns[0]
+                        .add_enabled(
+                            is_installed && is_running,
+                            egui::Button::new(
+                                RichText::new("Resume")
+                                    .size(FontSize::SM)
+                                    .color(Color32::WHITE),
+                            )
+                            .fill(Color32::from_rgb(68, 16, 21))
+                            .rounding(button_rounding)
+                            .min_size(Vec2::new(columns[0].available_width(), button_height)),
+                        )
+                        .clicked()
+                    {
+                        if let Ok(manager) = sauron_manager.lock() {
+                            if let Err(error) = manager.resume(settings) {
+                                tracing::error!("Sauron resume failed: {}", error);
+                            }
+                        }
+                        refresh_requested = true;
+                    }
+
+                    if columns[1]
+                        .add_enabled(
+                            is_installed,
+                            egui::Button::new(
+                                RichText::new("Open Screenshots")
+                                    .size(FontSize::SM)
+                                    .color(Color32::WHITE),
+                            )
+                            .fill(Color32::from_rgb(56, 13, 18))
+                            .rounding(button_rounding)
+                            .min_size(Vec2::new(columns[1].available_width(), button_height)),
+                        )
+                        .clicked()
+                    {
+                        if let Ok(manager) = sauron_manager.lock() {
+                            if let Err(error) = manager.open_screenshots_folder(settings) {
+                                tracing::error!("Open Sauron screenshots failed: {}", error);
+                            }
+                        }
+                    }
+                });
+
+                ui.add_space(Spacing::MD);
+                draw_horizontal_separator(ui, 0.0);
+                ui.add_space(Spacing::SM);
+
+                if draw_menu_item(ui, "↻", "Refresh Sauron Status") {
+                    refresh_requested = true;
+                }
+
+                if draw_menu_item(ui, "↗", "Open Sauron-sees") {
+                    let _ = open::that(SauronManager::repo_url());
+                }
+
+                if !is_installed {
+                    ui.add_space(Spacing::XS);
+                    ui.label(
+                        RichText::new(
+                            "Install sauron-sees or set an executable override in Settings → Providers → Sauron.",
+                        )
+                        .size(FontSize::XS)
+                        .color(Color32::from_rgb(214, 179, 184)),
+                    );
+                }
+            });
+        });
+
+    refresh_requested
 }
 
 /// Draw a provider detail card - macOS UsageMenuCardView style

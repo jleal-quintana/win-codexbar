@@ -6,7 +6,7 @@ A Windows port of [CodexBar](https://github.com/steipete/CodexBar) - the tiny me
 
 ## Features
 
-- **22 AI Providers**: Codex, Claude, Cursor, Gemini, Copilot, Antigravity, Windsurf, Zai, MiniMax, Kilo, Kiro, Vertex AI, Augment, OpenCode, Kimi, Kimi K2, Amp, Warp, Ollama, OpenRouter, Synthetic, JetBrains
+- **23 AI Providers**: Codex, Claude, Cursor, Sauron, Gemini, Copilot, Antigravity, Windsurf, Zai, MiniMax, Kilo, Kiro, Vertex AI, Augment, OpenCode, Kimi, Kimi K2, Amp, Warp, Ollama, OpenRouter, Synthetic, JetBrains
 - **System Tray Icon**: Dynamic two-bar meter showing session + weekly usage
 - **Native Windows UI**: Built with egui - no web runtime required
 - **Browser Cookie Extraction**: Automatic extraction from Chrome, Edge, Brave, Firefox (DPAPI encrypted)
@@ -96,6 +96,7 @@ codexbar cost -p claude
 | Codex | OAuth / CLI | Session, Weekly, Credits |
 | Claude | OAuth / Cookies / CLI | Session (5h), Weekly |
 | Cursor | Browser Cookies | Plan, Usage, Billing |
+| Sauron | Local subprocess | Agent status, pause state, screenshots |
 | Gemini | OAuth (gcloud) | Quota |
 | Copilot | GitHub Device Flow | Usage |
 | Antigravity | Local Language Server | Usage |
@@ -139,6 +140,12 @@ If automatic extraction fails, you can add cookies manually:
 1. Go to **Settings** → **Cookies** tab
 2. Select the provider
 3. Paste the cookie header from browser DevTools (F12 → Network → Request Headers → Cookie)
+
+## Sauron Integration
+
+Sauron integrates [sauron-sees](https://github.com/jleal-quintana/sauron-sees), a desktop activity capture agent that records screenshots and context locally for later review.
+
+Enable the **Sauron** tab in Settings to use CodexBar as the hub for the agent. From the main Sauron tab you can start or stop the `sauron-sees` agent, pause capture for one hour, resume immediately, and open the screenshots folder. CodexBar detects `sauron-sees.exe` on `PATH` or in `%LOCALAPPDATA%\Programs\sauron-sees\`, and you can override both the executable path and config path in Settings.
 
 ## Differences from macOS Version
 

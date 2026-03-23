@@ -26,6 +26,7 @@ fn get_icon_data() -> &'static HashMap<&'static str, &'static [u8]> {
         map.insert("kiro", include_bytes!("../../assets/icons/ProviderIcon-kiro.svg").as_slice());
         map.insert("minimax", include_bytes!("../../assets/icons/ProviderIcon-minimax.svg").as_slice());
         map.insert("opencode", include_bytes!("../../assets/icons/ProviderIcon-opencode.svg").as_slice());
+        map.insert("sauron", include_bytes!("../../assets/icons/ProviderIcon-sauron.svg").as_slice());
         map.insert("synthetic", include_bytes!("../../assets/icons/ProviderIcon-synthetic.svg").as_slice());
         map.insert("vertexai", include_bytes!("../../assets/icons/ProviderIcon-vertexai.svg").as_slice());
         map.insert("zai", include_bytes!("../../assets/icons/ProviderIcon-zai.svg").as_slice());

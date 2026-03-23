@@ -8,8 +8,8 @@ use crate::providers::{
     AmpProvider, AntigravityProvider, AugmentProvider, ClaudeProvider, CodexProvider,
     CopilotProvider, CursorProvider, FactoryProvider, GeminiProvider, JetBrainsProvider,
     KiloProvider, KimiProvider, KimiK2Provider, KiroProvider, MiniMaxProvider, OllamaProvider,
-    OpenCodeProvider, OpenRouterProvider, SyntheticProvider, VertexAIProvider, WarpProvider,
-    ZaiProvider,
+    OpenCodeProvider, OpenRouterProvider, SauronProvider, SyntheticProvider, VertexAIProvider,
+    WarpProvider, ZaiProvider,
 };
 use crate::status::{fetch_provider_status, ProviderStatus as StatusInfo, StatusLevel};
 
@@ -138,6 +138,7 @@ fn create_provider(id: ProviderId) -> Box<dyn Provider> {
         ProviderId::Claude => Box::new(ClaudeProvider::new()),
         ProviderId::Codex => Box::new(CodexProvider::new()),
         ProviderId::Cursor => Box::new(CursorProvider::new()),
+        ProviderId::Sauron => Box::new(SauronProvider::new()),
         ProviderId::Gemini => Box::new(GeminiProvider::new()),
         ProviderId::Copilot => Box::new(CopilotProvider::new()),
         ProviderId::Antigravity => Box::new(AntigravityProvider::new()),

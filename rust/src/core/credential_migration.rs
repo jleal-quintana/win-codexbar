@@ -292,6 +292,7 @@ pub fn account_name_for_provider(provider: ProviderId) -> &'static str {
         ProviderId::Codex => "codex-cookie",
         ProviderId::Claude => "claude-cookie",
         ProviderId::Cursor => "cursor-cookie",
+        ProviderId::Sauron => "sauron-config",
         ProviderId::Factory => "factory-cookie",
         ProviderId::MiniMax => "minimax-cookie",
         ProviderId::Augment => "augment-cookie",

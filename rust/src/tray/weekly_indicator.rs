@@ -88,6 +88,7 @@ impl WeeklyIndicatorColors {
             ProviderId::Codex => (0, 200, 83, 255),     // OpenAI green
             ProviderId::Claude => (217, 119, 87, 255),  // Claude terracotta
             ProviderId::Cursor => (59, 130, 246, 255),  // Cursor blue
+            ProviderId::Sauron => (176, 25, 44, 255),  // Sauron crimson
             ProviderId::Factory => (139, 92, 246, 255), // Factory purple
             ProviderId::Gemini => (66, 133, 244, 255),  // Google blue
             ProviderId::Antigravity => (156, 39, 176, 255), // Purple

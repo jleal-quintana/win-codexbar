@@ -11,6 +11,7 @@ A Windows port of [CodexBar](https://github.com/steipete/CodexBar) - a system tr
   - Claude (Anthropic)
   - Codex (OpenAI)
   - Cursor
+  - Sauron
   - Gemini (Google)
   - Copilot (GitHub)
   - Antigravity
@@ -140,6 +141,7 @@ Each provider has different authentication methods:
 | Claude | Browser cookies (Chrome/Edge), OAuth |
 | Codex | Local CLI, Browser cookies |
 | Cursor | Browser cookies |
+| Sauron | Local subprocess |
 | Gemini | gcloud CLI credentials |
 | Copilot | GitHub device flow |
 | Antigravity | Local language server |
@@ -149,6 +151,10 @@ Each provider has different authentication methods:
 | Vertex AI | gcloud OAuth |
 | Augment | VS Code extension |
 | MiniMax | API key |
+
+## Sauron Integration
+
+Win-CodexBar can act as a hub for [sauron-sees](https://github.com/jleal-quintana/sauron-sees), a desktop activity capture agent. The Sauron tab can start or stop the agent, pause capture for one hour, resume capture, and open the screenshots folder. The app looks for `sauron-sees.exe` on `PATH` or in `%LOCALAPPDATA%\Programs\sauron-sees\`, with optional executable and config overrides in Settings.
 
 ## Screenshots
 

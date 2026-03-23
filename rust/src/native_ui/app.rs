@@ -169,9 +169,12 @@ impl ProviderData {
                 .resets_at
                 .map(|t| format_reset_time(t, reset_time_relative))
                 .or_else(|| {
-                    (id == ProviderId::Sauron).then(|| snapshot.primary.reset_description.clone())
-                })
-                .flatten(),
+                    if id == ProviderId::Sauron {
+                        snapshot.primary.reset_description.clone()
+                    } else {
+                        None
+                    }
+                }),
             weekly_percent: snapshot.secondary.as_ref().map(|s| s.used_percent),
             weekly_reset: snapshot.secondary.as_ref().and_then(|s| {
                 s.resets_at

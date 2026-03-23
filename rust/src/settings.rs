@@ -300,7 +300,7 @@ impl Default for Settings {
 
         Self {
             enabled_providers: enabled,
-            sauron_enabled: false,
+            sauron_enabled: true,
             sauron_exe_path: None,
             sauron_config_path: None,
             theme_mode: ThemeMode::default(),
